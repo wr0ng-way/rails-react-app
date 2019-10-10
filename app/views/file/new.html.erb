@@ -1,0 +1,10 @@
+<div>
+  <% if flash[:notice] %>
+    <%= flash[:notice] %>
+  <% end %>
+</div>
+
+<%= form_tag import_file_index_path, multipart: true do |form| %>
+  <%= file_field_tag :file, accept: 'text/csv' %>
+  <%= submit_tag "Import" %>
+<% end %>
