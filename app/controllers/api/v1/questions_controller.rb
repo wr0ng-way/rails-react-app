@@ -4,15 +4,21 @@ class Api::V1::QuestionsController< ApplicationController
   before_action :set_question, only: %i[update destroy]
 
   def index
-    render json: Question.all
+    questions = Question.paginate(page: params[:page])
+    render json: questions, adapter: :json, meta: pagination_data(questions)
   end
 
   def create
-    question = Question.new(question_params)
-    if question.save
-      render json: question
-    else
-      render json: { success: false, message: question.errors.full_messages }
+    begin
+      ActiveRecord::Base.transaction do
+        role = Role.find_or_initialize_by(name: params[:question].dig(:role))
+        mapping = Mapping.find_or_initialize_by(name: params[:question].dig(:mapping))
+        question = Question.new(question_params.merge(required: params[:question].dig(:required)=='Yes', role: role, mapping: mapping))
+        question.save!
+        render json: question
+      end
+    rescue Exception => e
+      render json: { success: false, message: e }
     end
   end
 
@@ -32,14 +38,19 @@ class Api::V1::QuestionsController< ApplicationController
     end
   end
 
+  def pagination_data(questions)
+    {}.tap do |data|
+      data[:next_page] = questions.next_page
+      data[:previous_page] = questions.previous_page
+      data[:total_pages] = questions.total_pages
+      data[:current_page] = questions.current_page
+    end    
+  end
+
   private
 
   def question_params
-    out = params.require(:question).permit(:id, :text, :type)
-    out.merge(pri: 1, teaming_stages: 'Norming',
-              appears: 1, frequency: 50, required: false,
-              conditions: 'rare', role_id: 1, mapping_id: 1)
-    out
+    params.require(:question).permit(:id, :text, :type, :appears, :teaming_stage, :condition, :frequency, :required)
   end
 
   def set_question

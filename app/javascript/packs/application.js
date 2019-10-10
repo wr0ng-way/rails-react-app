@@ -16,3 +16,4 @@
 // const imagePath = (name) => images(name, true)
 
 import 'semantic-ui-css/semantic.min.css'
+import 'react-toastify/dist/ReactToastify.css';

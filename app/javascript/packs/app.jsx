@@ -1,41 +1,38 @@
 import React from 'react'
 import { NewQuestions } from './new_question'
 import { Questions } from './questions'
-import { Header } from 'semantic-ui-react'
-
+import { Pagination } from 'semantic-ui-react';
 
 class App extends React.Component {
 
   constructor(props) {
     super(props);
     this.state = {
-      questions: []
+      questions: [],
+      pagination_data: {},
+      activePage: 1
     };
-    this.formSubmitHandler = this.formSubmitHandler.bind(this)
-    this.questionUpdateHandler = this.questionUpdateHandler.bind(this)
     this.questionDeleteHandler = this.questionDeleteHandler.bind(this)
+
   }
 
   componentDidMount(){
-    fetch('/api/v1/questions.json')
-      .then((response) => {return response.json()})
-      .then((data) => {this.setState({ questions: data }) });
+    this.fetchQuestions(this.state.activePage)
   }
 
-  formSubmitHandler(data){
-    let body = JSON.stringify({question: {text: data.text, type: data.type} })
-    fetch('/api/v1/questions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: body,
-    }).then((response) => {return response.json()})
-      .then((question)=>{
-        this.setState({
-          questions: this.state.questions.concat(question)
-        })
-      })
+  handlePaginationChange(e, { activePage }) {
+    this.setState({ activePage: activePage })
+    this.fetchQuestions(activePage)
+  }
+
+  fetchQuestions(activePage){
+    fetch(`/api/v1/questions.json?page=${activePage}`)
+    .then((response) => {
+      return response.json()
+    })
+    .then((data) => {
+      this.setState({ questions: data.questions, pagination_data: data.meta}) 
+    });
   }
 
   questionDeleteHandler(id){
@@ -57,20 +54,6 @@ class App extends React.Component {
     })
   }
 
-  questionUpdateHandler(question) {
-    fetch(`/api/v1/questions/${question.id}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({question: question}),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }).then((response) => {return response.json()})
-      .then((question)=>{
-        this.updateQuestion(question)
-      })
-  }
-
   updateQuestion(question) {
     let newQuestions = this.state.questions.filter((f) => f.id !== question.id)
     newQuestions.push(question)
@@ -80,14 +63,23 @@ class App extends React.Component {
   }
 
   render() {
+    let params = this.state
     return(
       <div>
-        <Header as='h1' textAlign='right'>List Of all Questions</Header>
-        <NewQuestions formSubmitHandler={this.formSubmitHandler} />
         <Questions
-          questions={this.state.questions}
+          questions={params.questions}
           questionDeleteHandler={this.questionDeleteHandler}
           questionUpdateHandler={this.questionUpdateHandler} />
+        { params.questions.length > 0 ? 
+                <Pagination
+                  boundaryRange={0}
+                  defaultActivePage={params.pagination_data.current_page}
+                  firstItem={null}
+                  lastItem={null}
+                  onPageChange={this.handlePaginationChange.bind(this)}
+                  siblingRange={1}
+                  totalPages={params.pagination_data.total_pages}
+                /> : null }
       </div>
     )
   }
